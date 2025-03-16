@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    Status: <span id="status" style="color: red">Not Connected</span> <button id="activate">Activate</button> <br />
+    <select id="ringType">
+        <option value="3">Normal</option>
+        <option value="1">Constant</option>
+    </select>
+    <button id="ring" data-type="start">Start ringing</button><br />
+    Key Pressed: <span id="key">None</span>
+    <script>
+        let activate = document.getElementById("activate");
+        let status = document.getElementById("status");
+        let ring = document.getElementById("ring");
+        let ringType = document.getElementById("ringType");
+        let key = document.getElementById("key");
+        let hid;
+        activate.addEventListener("click", async e => {
+            status.textContent = "Pending...";
+            status.style.color = "orange";
+            activate.remove();
+            [hid] = await navigator.hid.requestDevice({ filters: [{ vendorId: 1766 }] });
+            await hid.open();
+            status.textContent = "Ready";
+            status.style.color = "green";
+            hid.addEventListener("inputreport", e => {
+                let [keyNumber, hook] = new Uint8Array(e.data.buffer);
+                if (hook === 128) {
+                    status.textContent = "Off-Hook";
+                    status.style.color = "orange";
+                } else if (hook === 0) {
+                    status.textContent = "Ready";
+                    status.style.color = "green";
+                } else {
+                    alert(`Unknown hook: ${hook}`);
+                }
+
+                let keyText;
+                switch (keyNumber) {
+                    case 0:
+                        keyText = "None";
+                        break;
+                    case 11:
+                        keyText = "*";
+                        break;
+                    case 12:
+                        keyText = "#";
+                        break;
+                    default:
+                        keyText = keyNumber - 1;
+                }
+                
+                key.textContent = keyText;
+            });
+        });
+        
+
+        ring.addEventListener("click", () => {
+            if (ring.dataset.type === "start") {
+                ring.dataset.type = "stop";
+                ring.textContent = "Stop ringing";
+                hid.sendFeatureReport(0, new Uint8Array([0x20, 0x0, 0x0, 0x1, 0x1, Number(ringType.value), 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0]));
+            } else {
+                ring.dataset.type = "start";
+                ring.textContent = "Start ringing";
+                hid.sendFeatureReport(0, new Uint8Array([0x20, 0x0, 0x0, 0x1, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0]));
+            }
+        })
+    </script>
+</body>
+</html>
