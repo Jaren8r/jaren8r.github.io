@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shards</title>
+</head>
+<body>
+    Shards: <input id="shards" type="number" min="1" value="1" oninput="updateData()"><br />
+    <pre id="guilds"></pre>
+</body>
+<script>
+    let guilds = [];
+    function parseHash () {
+        let hash = {};
+        location.hash.substr(1).split("&").forEach(kv => {
+            let split = kv.split("=")
+            hash[decodeURIComponent(split[0])] = decodeURIComponent(split[1]);
+        });
+        return hash;
+    }
+    function authorize () {
+        location = "https://discordapp.com/oauth2/authorize?client_id=694488217621102640&response_type=token&scope=guilds&redirect_uri=" + encodeURIComponent(window.location.toString()) 
+    }
+    function updateData () {
+        let shards = Number(document.getElementById("shards").value);
+        if (isNaN(shards) || shards < 1) {
+            document.getElementById("guilds").textContent = "Invalid Value";
+            return;
+        }
+        document.getElementById("guilds").textContent = guilds.map(guild => {
+            let shard = (BigInt(guild.id) >> 22n) % BigInt(shards);
+            return `${guild.name} (${guild.id}) - Shard ${shard} (${shard+1n}/${shards})`
+        }).join("\n");
+    }
+    async function init () {
+        let hash = parseHash();
+        if (!hash.access_token) return authorize();
+        guilds = await fetch("https://discordapp.com/api/v9/users/@me/guilds", {
+            headers: {
+                Authorization: `${hash.token_type} ${hash.access_token}`
+            }
+        }).then(r => r.json());
+        if (guilds.message) return authorize();
+
+        updateData();
+    }
+    init();
+</script>
+</html>
